@@ -39,8 +39,10 @@ jobs:
               head_sha: context.payload.pull_request.head.sha,
               status: "completed",
               conclusion: "success",
+              details_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${context.payload.pull_request.number}`,
               output: {
                 title: "Checkmarx Scan",
                 summary: "No vulnerabilities found.",
               }
             });
+
