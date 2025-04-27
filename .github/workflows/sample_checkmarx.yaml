@@ -1,10 +1,14 @@
-# .github/workflows/fake-checkmarx.yml
+# .github/workflows/sample_checkmarx.yaml
 name: Sample Checkmarx Scan on PR
 
 on:
   pull_request:
     branches:
-      - main  # <-- change to your branch
+      - main  # <-- your branch
+
+permissions:
+  pull-requests: write
+  contents: read
 
 jobs:
   simulate-checkmarx:
