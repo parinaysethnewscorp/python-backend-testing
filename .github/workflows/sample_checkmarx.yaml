@@ -21,11 +21,11 @@ jobs:
       - name: Create PR Comment (Simulating Checkmarx Result)
         uses: peter-evans/create-or-update-comment@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.TOKEN }}  
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ✅ **Checkmarx Scan Completed**
-            
+            ✅ Checkmarx Scan Completed
+
             No vulnerabilities found in your changes! (This is a simulation.)
 
       - name: Complete a Check Run (Optional - More Advanced)
@@ -45,4 +45,3 @@ jobs:
                 summary: "No vulnerabilities found.",
               }
             });
-
