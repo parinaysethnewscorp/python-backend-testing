@@ -1,0 +1,43 @@
+# .github/workflows/fake-checkmarx.yml
+name: Sample Checkmarx Scan on PR
+
+on:
+  pull_request:
+    branches:
+      - main  # <-- change to your branch
+
+jobs:
+  simulate-checkmarx:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Sample Checkmarx Scan
+        run: |
+          echo "Simulating Checkmarx Scan for PR #${{ github.event.pull_request.number }}."
+
+      - name: Create PR Comment (Simulating Checkmarx Result)
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ✅ **Checkmarx Scan Completed**
+            
+            No vulnerabilities found in your changes! (This is a simulation.)
+
+      - name: Complete a Check Run (Optional - More Advanced)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: "Checkmarx",
+              head_sha: context.payload.pull_request.head.sha,
+              status: "completed",
+              conclusion: "success",
+              output: {
+                title: "Checkmarx Scan",
+                summary: "No vulnerabilities found.",
+              }
+            });
