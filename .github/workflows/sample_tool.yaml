@@ -2,56 +2,84 @@ name: Vulnerability Tool After Checkmarx
 on:
   issue_comment:
     types: [created]
-
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+  
 jobs:
-  after-checkmarx:
+  check-for-checkmarx-comment:
     runs-on: ubuntu-latest
     steps:
-      # Check if this is a comment on a PR with the Checkmarx message
-      - name: Check if PR comment with Checkmarx completion
-        id: check_pr
-        if: |
-          github.event.issue.pull_request && 
-          contains(github.event.comment.body, '✅ **Checkmarx Scan Completed**')
-        run: echo "IS_VALID=true" >> $GITHUB_OUTPUT
-      
-      # If valid comment, get PR details to check the target branch
-      - name: Get PR details
-        if: steps.check_pr.outputs.IS_VALID == 'true'
-        id: pr_details
+      - name: Determine event type
+        id: event_type
+        run: |
+          if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+            echo "EVENT_TYPE=comment" >> $GITHUB_OUTPUT
+            echo "PR_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+          else
+            echo "EVENT_TYPE=pr" >> $GITHUB_OUTPUT
+            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          fi
+
+      # For comment events, check if it has the Checkmarx completion message
+      - name: Check if Checkmarx completed (comment event)
+        if: steps.event_type.outputs.EVENT_TYPE == 'comment'
+        id: check_comment
+        run: |
+          if [[ "${{ github.event.comment.body }}" == *"✅ **Checkmarx Scan Completed**"* ]]; then
+            echo "CHECKMARX_DONE=true" >> $GITHUB_OUTPUT
+          else
+            echo "CHECKMARX_DONE=false" >> $GITHUB_OUTPUT
+          fi
+
+      # For PR events, check if there's already a Checkmarx completion comment
+      - name: Check for Checkmarx comment (PR event)
+        if: steps.event_type.outputs.EVENT_TYPE == 'pr'
+        id: check_pr_comments
         uses: actions/github-script@v7
         with:
           script: |
             const { owner, repo } = context.repo;
-            const prNumber = context.payload.issue.number;
+            const prNumber = ${{ github.event.pull_request.number }};
             
-            const pr = await github.rest.pulls.get({
+            const comments = await github.rest.issues.listComments({
               owner,
               repo,
-              pull_number: prNumber
+              issue_number: prNumber
             });
             
-            // Check if PR is targeting main branch
-            const isMainBranch = pr.data.base.ref === 'main';
-            core.setOutput('IS_MAIN_TARGET', isMainBranch.toString());
-            core.setOutput('PR_NUMBER', prNumber.toString());
-      
-      # Only proceed if the PR is targeting the main branch
-      - name: Comment on PR
+            // Look for Checkmarx completion comment
+            const checkmarxComment = comments.data.find(comment => 
+              comment.body.includes('✅ **Checkmarx Scan Completed**')
+            );
+            
+            if (checkmarxComment) {
+              core.setOutput('CHECKMARX_DONE', 'true');
+            } else {
+              core.setOutput('CHECKMARX_DONE', 'false');
+            }
+
+      # Only run remediation if Checkmarx scan is done
+      - name: Run remediation tool
         if: |
-          steps.check_pr.outputs.IS_VALID == 'true' && 
-          steps.pr_details.outputs.IS_MAIN_TARGET == 'true'
+          (steps.event_type.outputs.EVENT_TYPE == 'comment' && steps.check_comment.outputs.CHECKMARX_DONE == 'true') ||
+          (steps.event_type.outputs.EVENT_TYPE == 'pr' && steps.check_pr_comments.outputs.CHECKMARX_DONE == 'true')
         uses: peter-evans/create-or-update-comment@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          issue-number: ${{ steps.pr_details.outputs.PR_NUMBER }}
+          issue-number: ${{ steps.event_type.outputs.PR_NUMBER }}
           body: |
             🛠️ **Vulnerability remediations started** for this PR!
-            🔗 **Follow this URL for detailed analysis**: [View Report](https://your-link-here.com/report/${{ steps.pr_details.outputs.PR_NUMBER }})
+            🔗 **Follow this URL for detailed analysis**: [View Report](https://your-link-here.com/report/${{ steps.event_type.outputs.PR_NUMBER }})
       
       - name: (Optional) Call external API
         if: |
-          steps.check_pr.outputs.IS_VALID == 'true' && 
-          steps.pr_details.outputs.IS_MAIN_TARGET == 'true'
+          (steps.event_type.outputs.EVENT_TYPE == 'comment' && steps.check_comment.outputs.CHECKMARX_DONE == 'true') ||
+          (steps.event_type.outputs.EVENT_TYPE == 'pr' && steps.check_pr_comments.outputs.CHECKMARX_DONE == 'true')
         run: |
-          echo "Running remediation steps for PR #${{ steps.pr_details.outputs.PR_NUMBER }}"
+          echo "Running remediation steps for PR #${{ steps.event_type.outputs.PR_NUMBER }}"
