@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+pydantic
+openai
+motor
+requests
+google-auth
+python-dotenv
+python-multipart
+google-cloud-compute
+anthropic
+pydantic[email]
+websockets
+fastapi-mail
+vertexai
