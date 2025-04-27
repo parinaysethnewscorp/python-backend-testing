@@ -5,21 +5,53 @@ on:
 
 jobs:
   after-checkmarx:
-    # Only run on PR comments that contain the Checkmarx success message
-    if: >
-      github.event.issue.pull_request &&
-      contains(github.event.comment.body, '✅ **Checkmarx Scan Completed**')
     runs-on: ubuntu-latest
     steps:
+      # Check if this is a comment on a PR with the Checkmarx message
+      - name: Check if PR comment with Checkmarx completion
+        id: check_pr
+        if: |
+          github.event.issue.pull_request && 
+          contains(github.event.comment.body, '✅ **Checkmarx Scan Completed**')
+        run: echo "IS_VALID=true" >> $GITHUB_OUTPUT
+      
+      # If valid comment, get PR details to check the target branch
+      - name: Get PR details
+        if: steps.check_pr.outputs.IS_VALID == 'true'
+        id: pr_details
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.issue.number;
+            
+            const pr = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: prNumber
+            });
+            
+            // Check if PR is targeting main branch
+            const isMainBranch = pr.data.base.ref === 'main';
+            core.setOutput('IS_MAIN_TARGET', isMainBranch.toString());
+            core.setOutput('PR_NUMBER', prNumber.toString());
+      
+      # Only proceed if the PR is targeting the main branch
       - name: Comment on PR
+        if: |
+          steps.check_pr.outputs.IS_VALID == 'true' && 
+          steps.pr_details.outputs.IS_MAIN_TARGET == 'true'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          token: ${{ secrets.TOKEN }}
-          issue-number: ${{ github.event.issue.number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ steps.pr_details.outputs.PR_NUMBER }}
           body: |
             🛠️ **Vulnerability remediations started** for this PR!
-            🔗 **Follow this URL for detailed analysis**: [View Report](https://your-link-here.com/report/${{ github.event.issue.number }})
+            🔗 **Follow this URL for detailed analysis**: [View Report](https://your-link-here.com/report/${{ steps.pr_details.outputs.PR_NUMBER }})
       
       - name: (Optional) Call external API
+        if: |
+          steps.check_pr.outputs.IS_VALID == 'true' && 
+          steps.pr_details.outputs.IS_MAIN_TARGET == 'true'
         run: |
-          echo "You could now call your API or run remediation steps."
+          echo "Running remediation steps for PR #${{ steps.pr_details.outputs.PR_NUMBER }}"
