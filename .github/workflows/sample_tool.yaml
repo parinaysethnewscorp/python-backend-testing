@@ -1,4 +1,5 @@
 name: Vulnerability Tool After Checkmarx
+
 on:
   issue_comment:
     types: [created]
@@ -11,10 +12,9 @@ permissions:
 jobs:
   after-checkmarx:
     runs-on: ubuntu-latest
-    # Only run if comment is on a PR and contains the Checkmarx success message
     if: >
       github.event.issue.pull_request &&
-      contains(github.event.comment.body, '✅ **Checkmarx Scan Completed**')
+      contains(github.event.comment.body, '✅ Checkmarx Scan Completed')
     steps:
       - name: Debug Info
         run: |
