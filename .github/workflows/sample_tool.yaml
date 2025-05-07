@@ -29,19 +29,6 @@ jobs:
             🛠️ **Vulnerability remediation started** for this PR!
             🔗 **Follow this URL for detailed analysis**: [View Report](https://your-link-here.com/report/${{ github.event.issue.number }})
 
-      - name: Install GitHub CLI
-        run: |
-          sudo apt-get update
-          sudo apt-get install gh -y
-
-      - name: Fetch PR details
-        id: pr
-        env:
-          GH_TOKEN: ${{ secrets.NCAI_SVRT_TOKEN }}
-        run: |
-          pr_data=$(gh pr view ${{ github.event.issue.number }} --json baseRefName,headRefName,headRepository --jq '{base: .baseRefName, head: .headRefName, url: .headRepository.url}')
-          echo "pr_data=$pr_data" >> $GITHUB_OUTPUT
-
       - name: Call external API with remediation data
         env:
           GITHUB_TOKEN_SECRET: ${{ secrets.NCAI-SVRT-TOKEN }}
