@@ -39,6 +39,7 @@ jobs:
                         -H "Authorization: Bearer $GITHUB_TOKEN_SECRET" \
                         "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}")
 
+          echo $PR_JSON
           GITHUB_URL=$(echo "$PR_JSON" | jq -r '.head.repo.html_url')
           BASE_BRANCH=$(echo "$PR_JSON" | jq -r '.base.ref')
           FEATURE_BRANCH=$(echo "$PR_JSON" | jq -r '.head.ref')
