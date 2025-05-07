@@ -30,3 +30,13 @@ async def route_check():
         content={"status": "Success DB Route is running", "timestamp": datetime.datetime.utcnow().isoformat()},
         status_code=200
     )
+
+@router.get("/route_check_v2", response_model=dict)
+async def route_check_v2():
+    """
+    Route check endpoint to verify if the API is running.
+    """
+    return JSONResponse(
+        content={"status": "Success DB V2 Route is running", "timestamp": datetime.datetime.utcnow().isoformat()},
+        status_code=200
+    )
