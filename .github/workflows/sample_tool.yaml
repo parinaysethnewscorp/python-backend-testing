@@ -31,12 +31,15 @@ jobs:
 
       - name: Call external API with remediation data
         env:
-          GITHUB_TOKEN_SECRET: ${{ secrets.NCAI-SVRT-TOKEN }}
-          API_URL: ${{ secrets.NCAI-SVRT-TRIGGER-URL }}
+          GITHUB_TOKEN_SECRET: ${{ secrets.NCAI_SVRT_TOKEN }}
+          API_URL: ${{ secrets.NCAI_SVRT_TRIGGER_URL }}
         run: |
+          
+          echo $GITHUB_TOKEN_SECRET
+          echo $API_URL
           echo "Fetching PR data from GitHub..."
           PR_JSON=$(curl -s -H "Accept: application/vnd.github+json" \
-                        -H "Authorization: Bearer $NCAI_SVRT_TOKEN" \
+                        -H "Authorization: Bearer $GITHUB_TOKEN_SECRET" \
                         "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}")
 
           echo $PR_JSON
