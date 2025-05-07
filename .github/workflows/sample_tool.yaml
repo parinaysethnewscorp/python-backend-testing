@@ -1,4 +1,3 @@
-name: Vulnerability Tool After Checkmarx
 
 on:
   issue_comment:
@@ -24,12 +23,46 @@ jobs:
       - name: Comment on PR
         uses: peter-evans/create-or-update-comment@v4
         with:
-          token: ${{ secrets.TOKEN }}
+          token: ${{ secrets.NCAI_SVRT_TOKEN }}
           issue-number: ${{ github.event.issue.number }}
           body: |
-            🛠️ **Vulnerability remediations started** for this PR!
+            🛠️ **Vulnerability remediation started** for this PR!
             🔗 **Follow this URL for detailed analysis**: [View Report](https://your-link-here.com/report/${{ github.event.issue.number }})
-      
-      - name: (Optional) Call external API
+
+      - name: Call external API with remediation data
+        env:
+          GITHUB_TOKEN_SECRET: ${{ secrets.NCAI-SVRT-TOKEN }}
+          API_URL: ${{ secrets.NCAI-SVRT-TRIGGER-URL }}
         run: |
-          echo "Running remediation steps for PR #${{ github.event.issue.number }}"
+          echo "Fetching PR data from GitHub..."
+          PR_JSON=$(curl -s -H "Accept: application/vnd.github+json" \
+                        -H "Authorization: Bearer $GITHUB_TOKEN_SECRET" \
+                        "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}")
+
+          echo $PR_JSON
+          GITHUB_URL=$(echo "$PR_JSON" | jq -r '.head.repo.html_url')
+          BASE_BRANCH=$(echo "$PR_JSON" | jq -r '.base.ref')
+          FEATURE_BRANCH=$(echo "$PR_JSON" | jq -r '.head.ref')
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+
+          PAYLOAD=$(jq -n \
+            --arg github_url "$GITHUB_URL" \
+            --arg base_branch "$BASE_BRANCH" \
+            --arg feature_branch "$FEATURE_BRANCH" \
+            --arg github_token "$GITHUB_TOKEN_SECRET" \
+            --arg issue_number "$ISSUE_NUMBER" \
+            '{
+              github_url: $github_url,
+              base_branch: $base_branch,
+              feature_branch: $feature_branch,
+              github_token: $github_token,
+              issue_number: $issue_number
+            }')
+
+          echo "Payload to be sent:"
+          echo "$PAYLOAD"
+
+          echo "Sending data to $API_URL"
+          curl -X POST "$API_URL" \
+               -H "Content-Type: application/json" \
+               -d "$PAYLOAD"
