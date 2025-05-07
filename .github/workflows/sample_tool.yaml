@@ -44,28 +44,37 @@ jobs:
 
       - name: Call external API with remediation data
         env:
-          GITHUB_TOKEN_SECRET: ${{ secrets.NCAI_SVRT_TOKEN }}
-          API_URL: ${{ secrets.NCAI_SVRT_TRIGGER_URL }}
+          GITHUB_TOKEN_SECRET: ${{ secrets.NCAI-SVRT-TOKEN }}
+          API_URL: ${{ secrets.NCAI-SVRT-TRIGGER-URL }}
         run: |
-          payload=$(jq -n \
-            --arg github_url "${{ fromJson(steps.pr.outputs.pr_data).url }}" \
-            --arg base_branch "${{ fromJson(steps.pr.outputs.pr_data).base }}" \
-            --arg feature_branch "${{ fromJson(steps.pr.outputs.pr_data).head }}" \
+          echo "Fetching PR data from GitHub..."
+          PR_JSON=$(curl -s -H "Accept: application/vnd.github+json" \
+                        -H "Authorization: Bearer $GITHUB_TOKEN_SECRET" \
+                        "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}")
+
+          GITHUB_URL=$(echo "$PR_JSON" | jq -r '.head.repo.html_url')
+          BASE_BRANCH=$(echo "$PR_JSON" | jq -r '.base.ref')
+          FEATURE_BRANCH=$(echo "$PR_JSON" | jq -r '.head.ref')
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+
+          PAYLOAD=$(jq -n \
+            --arg github_url "$GITHUB_URL" \
+            --arg base_branch "$BASE_BRANCH" \
+            --arg feature_branch "$FEATURE_BRANCH" \
             --arg github_token "$GITHUB_TOKEN_SECRET" \
-            --arg issue_number "${{ github.event.issue.number }}" \
+            --arg issue_number "$ISSUE_NUMBER" \
             '{
               github_url: $github_url,
               base_branch: $base_branch,
               feature_branch: $feature_branch,
               github_token: $github_token,
               issue_number: $issue_number
-            }'
-          )
+            }')
 
           echo "Payload to be sent:"
-          echo "$payload"
+          echo "$PAYLOAD"
 
           echo "Sending data to $API_URL"
           curl -X POST "$API_URL" \
-            -H "Content-Type: application/json" \
-            -d "$payload"
+               -H "Content-Type: application/json" \
+               -d "$PAYLOAD"
