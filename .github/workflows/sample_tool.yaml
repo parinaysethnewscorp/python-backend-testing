@@ -24,12 +24,49 @@ jobs:
       - name: Comment on PR
         uses: peter-evans/create-or-update-comment@v4
         with:
-          token: ${{ secrets.TOKEN }}
+          token: ${{ secrets.NCAI-SVRT-TOKEN }}
           issue-number: ${{ github.event.issue.number }}
           body: |
             🛠️ **Vulnerability remediations started** for this PR!
             🔗 **Follow this URL for detailed analysis**: [View Report](https://your-link-here.com/report/${{ github.event.issue.number }})
-      
-      - name: (Optional) Call external API
+
+      - name: Install GitHub CLI
         run: |
-          echo "Running remediation steps for PR #${{ github.event.issue.number }}"
+          sudo apt-get update
+          sudo apt-get install gh -y
+
+      - name: Fetch PR details
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.NCAI-SVRT-TOKEN }}
+        run: |
+          pr_data=$(gh pr view ${{ github.event.issue.number }} --json baseRefName,headRefName,headRepository --jq '{base: .baseRefName, head: .headRefName, url: .headRepository.url}')
+          echo "pr_data=$pr_data" >> $GITHUB_OUTPUT
+
+      - name: Call external API with remediation data
+        env:
+          GITHUB_TOKEN_SECRET: ${{ secrets.NCAI-SVRT-TOKEN }}
+          API_URL: ${{ secrets.NCAI-SVRT-TRIGGER-URL }}
+        run: |
+          payload=$(jq -n \
+            --arg github_url "${{ fromJson(steps.pr.outputs.pr_data).url }}" \
+            --arg base_branch "${{ fromJson(steps.pr.outputs.pr_data).base }}" \
+            --arg feature_branch "${{ fromJson(steps.pr.outputs.pr_data).head }}" \
+            --arg github_token "$GITHUB_TOKEN_SECRET" \
+            --arg issue_number "${{ github.event.issue.number }}" \
+            '{
+              github_url: $github_url,
+              base_branch: $base_branch,
+              feature_branch: $feature_branch,
+              github_token: $github_token,
+              issue_number: $issue_number
+            }'
+          )
+
+          echo "Payload to be sent:"
+          echo "$payload"
+
+          echo "Sending data to $API_URL"
+          curl -X POST "$API_URL" \
+            -H "Content-Type: application/json" \
+            -d "$payload"
