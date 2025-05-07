@@ -1,4 +1,3 @@
-name: Vulnerability Tool After Checkmarx
 
 on:
   issue_comment:
@@ -27,7 +26,7 @@ jobs:
           token: ${{ secrets.NCAI-SVRT-TOKEN }}
           issue-number: ${{ github.event.issue.number }}
           body: |
-            🛠️ **Vulnerability remediations started** for this PR!
+            🛠️ **Vulnerability remediation started** for this PR!
             🔗 **Follow this URL for detailed analysis**: [View Report](https://your-link-here.com/report/${{ github.event.issue.number }})
 
       - name: Install GitHub CLI
@@ -38,15 +37,15 @@ jobs:
       - name: Fetch PR details
         id: pr
         env:
-          GH_TOKEN: ${{ secrets.NCAI-SVRT-TOKEN }}
+          GH_TOKEN: ${{ secrets.NCAI_SVRT_TOKEN }}
         run: |
           pr_data=$(gh pr view ${{ github.event.issue.number }} --json baseRefName,headRefName,headRepository --jq '{base: .baseRefName, head: .headRefName, url: .headRepository.url}')
           echo "pr_data=$pr_data" >> $GITHUB_OUTPUT
 
       - name: Call external API with remediation data
         env:
-          GITHUB_TOKEN_SECRET: ${{ secrets.NCAI-SVRT-TOKEN }}
-          API_URL: ${{ secrets.NCAI-SVRT-TRIGGER-URL }}
+          GITHUB_TOKEN_SECRET: ${{ secrets.NCAI_SVRT_TOKEN }}
+          API_URL: ${{ secrets.NCAI_SVRT_TRIGGER_URL }}
         run: |
           payload=$(jq -n \
             --arg github_url "${{ fromJson(steps.pr.outputs.pr_data).url }}" \
