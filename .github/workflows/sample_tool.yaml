@@ -23,7 +23,7 @@ jobs:
       - name: Comment on PR
         uses: peter-evans/create-or-update-comment@v4
         with:
-          token: ${{ secrets.NCAI-SVRT-TOKEN }}
+          token: ${{ secrets.NCAI_SVRT_TOKEN }}
           issue-number: ${{ github.event.issue.number }}
           body: |
             🛠️ **Vulnerability remediation started** for this PR!
