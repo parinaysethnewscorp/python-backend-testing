@@ -1,6 +1,6 @@
 on:
   issue_comment:
-    types: [created]
+    types: [created, edited]
 
 permissions:
   pull-requests: write
@@ -10,14 +10,23 @@ permissions:
 jobs:
   after-checkmarx:
     runs-on: ubuntu-latest
-    if: >
-      github.event.issue.pull_request &&
-      contains(github.event.comment.body, 'Checkmarx One - Scan Summary & Details -')
+    if: github.event.issue.pull_request != null
     steps:
-      - name: Debug Info
+      - name: Check if comment matches Checkmarx pattern
+        id: check-comment
         run: |
-          echo "Comment detected on PR #${{ github.event.issue.number }}"
-          echo "Comment contains Checkmarx completion message"
+          echo "Comment body: ${{ github.event.comment.body }}"
+          if echo "${{ github.event.comment.body }}" | grep -q -E 'Checkmarx One.*Scan Summary'; then
+            echo "match=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "match=false" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      - name: Stop if comment is not from Checkmarx
+        if: steps.check-comment.outputs.match != 'true'
+        run: |
+          echo "Comment does not match Checkmarx format. Skipping."
+          exit 0
 
       - name: Generate UUID
         id: uuid
