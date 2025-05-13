@@ -52,6 +52,7 @@ jobs:
           ISSUE_NUMBER="${{ github.event.issue.number }}"
 
           PAYLOAD=$(jq -n \
+            --arg task_id "$UUID" \
             --arg url "$GITHUB_URL" \
             --arg default_branch "$BASE_BRANCH" \
             --arg feature_branch "$FEATURE_BRANCH" \
@@ -60,6 +61,7 @@ jobs:
             --arg owner "$OWNER_NAME" \
             '{
               url: $url,
+              task_id: $task_id,
               default_branch: $default_branch,
               feature_branch: $feature_branch,
               issue_number: $issue_number,
