@@ -57,7 +57,6 @@ jobs:
             --arg owner "$OWNER_NAME" \
             '{
               url: $url,
-              task_id: $task_id,
               default_branch: $default_branch,
               feature_branch: $feature_branch,
               issue_number: $issue_number,
