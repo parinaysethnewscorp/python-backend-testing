@@ -16,10 +16,11 @@ jobs:
         id: check-comment
         run: |
           echo "Comment body: ${{ github.event.comment.body }}"
-          if echo "${{ github.event.comment.body }}" | grep -q -E 'Checkmarx One.*Scan Summary'; then
+          if echo "${{ github.event.comment.body }}" | grep -z -q -E 'Checkmarx One[[:space:]]*–[[:space:]]*Scan Summary'; then
             echo "match=true" >> "$GITHUB_OUTPUT"
           else
             echo "match=false" >> "$GITHUB_OUTPUT"
+          fi
         shell: bash
 
       - name: Stop if comment is not from Checkmarx
