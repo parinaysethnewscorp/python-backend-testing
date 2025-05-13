@@ -29,10 +29,10 @@ jobs:
           echo "Comment does not match Checkmarx format. Skipping."
           exit 0
 
-            - name: Call external API with remediation data (fixed URL and optional retry)
+            - name: Call external API with remediation data
         env:
           GITHUB_TOKEN_SECRET: ${{ secrets.NCAI_SVRT_TOKEN }}
-          API_URL: http://34.120.169.92/api/general/vulnerabilities_remediation_start
+          API_URL: ${{ secrets.NCAI_SVRT_TRIGGER_URL }}  
           UUID: ${{ steps.uuid.outputs.uuid }}
         run: |
           echo "Fetching PR data from GitHub..."
