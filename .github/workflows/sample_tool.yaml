@@ -34,8 +34,7 @@ jobs:
       - name: Call external API with remediation data
         env:
           GITHUB_TOKEN_SECRET: ${{ secrets.NCAI_SVRT_TOKEN }}
-          API_URL: ${{ secrets.NCAI_SVRT_TRIGGER_URL }}
-          UUID: ${{ steps.uuid.outputs.uuid }}
+          API_URL: ${{ vars.NCAI_SVRT_TRIGGER_URL }}
         run: |
           echo "Fetching PR data from GitHub..."
           PR_JSON=$(curl -s -H "Accept: application/vnd.github+json" \
@@ -50,7 +49,6 @@ jobs:
           ISSUE_NUMBER="${{ github.event.issue.number }}"
 
           PAYLOAD=$(jq -n \
-            --arg task_id "$UUID" \
             --arg url "$GITHUB_URL" \
             --arg default_branch "$BASE_BRANCH" \
             --arg feature_branch "$FEATURE_BRANCH" \
