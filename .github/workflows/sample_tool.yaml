@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >
       github.event.issue.pull_request &&
-      contains(github.event.comment.body, '✅ Checkmarx Scan Completed')
+      contains(github.event.comment.body, 'Checkmarx One - Scan Summary & Details -')
     steps:
       - name: Debug Info
         run: |
