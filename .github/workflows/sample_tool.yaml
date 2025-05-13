@@ -1,4 +1,3 @@
-
 on:
   issue_comment:
     types: [created]
@@ -20,51 +19,61 @@ jobs:
           echo "Comment detected on PR #${{ github.event.issue.number }}"
           echo "Comment contains Checkmarx completion message"
 
+      - name: Generate UUID
+        id: uuid
+        run: echo "uuid=$(uuidgen)" >> "$GITHUB_OUTPUT"
+
       - name: Comment on PR
         uses: peter-evans/create-or-update-comment@v4
         with:
           token: ${{ secrets.NCAI_SVRT_TOKEN }}
           issue-number: ${{ github.event.issue.number }}
-          body: |
-            ![Logo](https://cdn.ast.checkmarx.net/integrations/logo/Checkmarx.png)\n**Checkmarx One – Scan Summary & Details** – [65d368c1\\-bf82\\-4e7c\\-9fcf\\-c9c0158aa9be](https://newscorpst.cxone.cloud/projects/03aeeb2f-b235-4075-87fe-ac8e5e32986a/scans?id=65d368c1-bf82-4e7c-9fcf-c9c0158aa9be&branch=newscorp-ghfb%2Ftest-cx-vulnerabilities)\n<!--new issues section--><details><summary><b>New Issues (3)</b></summary>\nCheckmarx found the following issues in this Pull Request\n\nSeverity|Issue|Source File / Package|Checkmarx Insight\n---|---|---|---\n![HIGH](https://cdn.ast.checkmarx.net/integrations/severity/High.png)|Passwords And Secrets \\- Generic Token|/undocumented\\.json: [19970](https://github.com/newscorp-ghfb/reel-screenkit-ios-fork-cx/blob/test-cx-vulnerabilities//docs/api/undocumented.json#L19970)|<details><summary>details</summary>Query to find passwords and secrets in infrastructure code\\.</details>\n![HIGH](https://cdn.ast.checkmarx.net/integrations/severity/High.png)|Passwords And Secrets \\- Generic Token|/BrightcoveFrame\\.json: [11](https://github.com/newscorp-ghfb/reel-screenkit-ios-fork-cx/blob/test-cx-vulnerabilities//docs/json/test/BrightcoveFrame.json#L11)|<details><summary>details</summary>Query to find passwords and secrets in infrastructure code\\.</details>\n![HIGH](https://cdn.ast.checkmarx.net/integrations/severity/High.png)|Passwords And Secrets \\- Generic Token|/undocumented\\.json: [22525](https://github.com/newscorp-ghfb/reel-screenkit-ios-fork-cx/blob/test-cx-vulnerabilities//docs/api/undocumented.json#L22525)|<details><summary>details</summary>Query to find passwords and secrets in infrastructure code\\.</details>\n\n</details>\n\n<!--new issues section--><!--fix issues section--><details><summary><b>Fixed Issues (6)</b></summary>\nGreat job! The following issues were fixed in this Pull Request\n\nSeverity|Issue|Source File / Package\n---|---|---\n![HIGH](https://cdn.ast.checkmarx.net/integrations/severity/High.png)|~~Passwords And Secrets \\- Generic Token~~|/brightcoveframe\\.json: [1](https://github.com/newscorp-ghfb/reel-screenkit-ios-fork-cx/blob/test-cx-vulnerabilities//Doccarchive/ScreenKit.doccarchive/data/documentation/screenkit/brightcoveframe.json#L1)\n![HIGH](https://cdn.ast.checkmarx.net/integrations/severity/High.png)|~~Passwords And Secrets \\- Generic Token~~|/init\\(basedata:publisher:videoidentifier:playlistidentifier:inline:autoplay:adrequesturls:authtoken:\\)\\.json: [1](https://github.com/newscorp-ghfb/reel-screenkit-ios-fork-cx/blob/test-cx-vulnerabilities//Doccarchive/ScreenKit.doccarchive/data/documentation/screenkit/brightcoveframe/init(basedata:publisher:videoidentifier:playlistidentifier:inline:autoplay:adrequesturls:authtoken:).json#L1)\n![HIGH](https://cdn.ast.checkmarx.net/integrations/severity/High.png)|~~[Signed_Memory_Arithmetic](https://newscorpst.cxone.cloud/results/03aeeb2f-b235-4075-87fe-ac8e5e32986a/65d368c1-bf82-4e7c-9fcf-c9c0158aa9be/sast/description/190/3072978480663385635)~~|/ScreenKitExample/Pods/NSLogger/Client/iOS/LoggerClient\\.m: [1150](https://github.com/newscorp-ghfb/reel-screenkit-ios-fork-cx/blob/test-cx-vulnerabilities//ScreenKitExample/Pods/NSLogger/Client/iOS/LoggerClient.m#L1150)\n![LOW](https://cdn.ast.checkmarx.net/integrations/severity/Low.png)|~~[Password_In_Comment](https://newscorpst.cxone.cloud/results/03aeeb2f-b235-4075-87fe-ac8e5e32986a/65d368c1-bf82-4e7c-9fcf-c9c0158aa9be/sast/description/615/17084654208161489393)~~|/ScreenKitExample/Pods/OHHTTPStubs/Sources/OHHTTPStubsSwift/OHHTTPStubsSwift\\.swift: [179](https://github.com/newscorp-ghfb/reel-screenkit-ios-fork-cx/blob/test-cx-vulnerabilities//ScreenKitExample/Pods/OHHTTPStubs/Sources/OHHTTPStubsSwift/OHHTTPStubsSwift.swift#L179)\n![LOW](https://cdn.ast.checkmarx.net/integrations/severity/Low.png)|~~[Password_In_Comment](https://newscorpst.cxone.cloud/results/03aeeb2f-b235-4075-87fe-ac8e5e32986a/65d368c1-bf82-4e7c-9fcf-c9c0158aa9be/sast/description/615/17084654208161489393)~~|/ScreenKitExample/Pods/OHHTTPStubs/Sources/OHHTTPStubsSwift/OHHTTPStubsSwift\\.swift: [179](https://github.com/newscorp-ghfb/reel-screenkit-ios-fork-cx/blob/test-cx-vulnerabilities//ScreenKitExample/Pods/OHHTTPStubs/Sources/OHHTTPStubsSwift/OHHTTPStubsSwift.swift#L179)\n![LOW](https://cdn.ast.checkmarx.net/integrations/severity/Low.png)|~~[Password_In_Comment](https://newscorpst.cxone.cloud/results/03aeeb2f-b235-4075-87fe-ac8e5e32986a/65d368c1-bf82-4e7c-9fcf-c9c0158aa9be/sast/description/615/17084654208161489393)~~|/ScreenKitExample/Pods/CryptoSwift/Sources/CryptoSwift/Scrypt\\.swift: [40](https://github.com/newscorp-ghfb/reel-screenkit-ios-fork-cx/blob/test-cx-vulnerabilities//ScreenKitExample/Pods/CryptoSwift/Sources/CryptoSwift/Scrypt.swift#L40)\n</details>\n\n<!--fix issues section-->
+          body: | 
+            🛠️ **Vulnerability remediation started** for this PR!
+            🔗 **Follow this URL for detailed analysis**: [View Report](https://your-link-here.com/report/${{ steps.uuid.outputs.uuid }})
 
       - name: Call external API with remediation data
         env:
           GITHUB_TOKEN_SECRET: ${{ secrets.NCAI_SVRT_TOKEN }}
           API_URL: ${{ secrets.NCAI_SVRT_TRIGGER_URL }}
+          UUID: ${{ steps.uuid.outputs.uuid }}
         run: |
-          
-          echo $GITHUB_TOKEN_SECRET
-          echo $API_URL
           echo "Fetching PR data from GitHub..."
           PR_JSON=$(curl -s -H "Accept: application/vnd.github+json" \
                         -H "Authorization: Bearer $GITHUB_TOKEN_SECRET" \
                         "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}")
 
-          echo $PR_JSON
+          echo "$PR_JSON"
           GITHUB_URL=$(echo "$PR_JSON" | jq -r '.head.repo.html_url')
           BASE_BRANCH=$(echo "$PR_JSON" | jq -r '.base.ref')
           FEATURE_BRANCH=$(echo "$PR_JSON" | jq -r '.head.ref')
+          REPO_NAME=$(echo "$PR_JSON" | jq -r '.head.repo.name')
+          OWNER_NAME=$(echo "$PR_JSON" | jq -r '.head.repo.owner.login')
           ISSUE_NUMBER="${{ github.event.issue.number }}"
 
           PAYLOAD=$(jq -n \
-            --arg github_url "$GITHUB_URL" \
-            --arg base_branch "$BASE_BRANCH" \
+            --arg task_id "$UUID" \
+            --arg url "$GITHUB_URL" \
+            --arg default_branch "$BASE_BRANCH" \
             --arg feature_branch "$FEATURE_BRANCH" \
-            --arg github_token "$GITHUB_TOKEN_SECRET" \
             --arg issue_number "$ISSUE_NUMBER" \
+            --arg repo "$REPO_NAME" \
+            --arg owner "$OWNER_NAME" \
             '{
-              github_url: $github_url,
-              base_branch: $base_branch,
+              url: $url,
+              task_id: $task_id,
+              default_branch: $default_branch,
               feature_branch: $feature_branch,
-              github_token: $github_token,
-              issue_number: $issue_number
+              issue_number: $issue_number,
+              repo: $repo,
+              owner: $owner
             }')
 
           echo "Payload to be sent:"
           echo "$PAYLOAD"
 
-          echo "Sending data to $API_URL"
-          curl -X POST "$API_URL" \
+          echo "Sending data to $API_URL/${UUID}"
+          curl -X POST "$API_URL/${UUID}" \
                -H "Content-Type: application/json" \
+               -H "Authorization: Bearer $GITHUB_TOKEN_SECRET" \
                -d "$PAYLOAD"
