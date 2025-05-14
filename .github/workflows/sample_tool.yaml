@@ -14,18 +14,23 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.issue.pull_request != null
     steps:
-      - name: Check if comment matches Checkmarx pattern
+      - name: Check if comment is a Checkmarx summary
         id: check-comment
         run: |
-          echo "Comment body: ${{ github.event.comment.body }}"
-          if echo "${{ github.event.comment.body }}" | grep -z -q -E 'Checkmarx One[[:space:]]*–[[:space:]]*Scan Summary'; then
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          echo "Comment body: $COMMENT_BODY"
+
+          # Match only Checkmarx summary and skip remediation or unrelated comments
+          if echo "$COMMENT_BODY" | grep -q -E 'Checkmarx One[[:space:]]*–[[:space:]]*Scan Summary'; then
+            echo "✅ Detected Checkmarx scan summary"
             echo "match=true" >> "$GITHUB_OUTPUT"
           else
+            echo "⛔ Not a Checkmarx comment. Skipping."
             echo "match=false" >> "$GITHUB_OUTPUT"
           fi
         shell: bash
 
-      - name: Stop if comment is not from Checkmarx
+      - name: Stop if comment is not a Checkmarx summary
         if: steps.check-comment.outputs.match != 'true'
         run: |
           echo "Comment does not match Checkmarx format. Skipping."
@@ -50,7 +55,7 @@ jobs:
 
           # Encode the token as base64(username:token)
           ENCODED_AUTH=$(echo -n "x-access-token:$GITHUB_TOKEN_SECRET" | base64)
-
+          
           PAYLOAD=$(jq -n \
             --arg url "$GITHUB_URL" \
             --arg default_branch "$BASE_BRANCH" \
