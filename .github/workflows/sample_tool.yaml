@@ -1,5 +1,3 @@
-name: Trigger Remediation After Checkmarx Comment
-
 on:
   issue_comment:
     types: [created, edited]
@@ -11,32 +9,29 @@ permissions:
 
 jobs:
   after-checkmarx:
-    runs-on: ubuntu-latest
     if: github.event.issue.pull_request != null
+    runs-on: ubuntu-latest
+
     steps:
-      - name: Check if comment is from Checkmarx bot and matches expected format
+      - name: Only continue if the triggering comment is the Checkmarx scan summary
         id: check-comment
         run: |
-          COMMENT_BODY="${{ github.event.comment.body }}"
-          COMMENT_AUTHOR="${{ github.event.comment.user.login }}"
-          echo "Comment author: $COMMENT_AUTHOR"
-          echo "Comment body: $COMMENT_BODY"
+          COMMENT="${{ github.event.comment.body }}"
 
-          # Only proceed if author is Checkmarx bot AND body matches the pattern
-          if [[ "$COMMENT_AUTHOR" == "riyanshguptanewscorp" ]] && \
-             echo "$COMMENT_BODY" | grep -q -E 'Checkmarx One[[:space:]]*–[[:space:]]*Scan Summary'; then
-            echo "✅ Valid Checkmarx comment by $COMMENT_AUTHOR"
+          echo "Triggering comment: $COMMENT"
+
+          # Only proceed if this specific comment is the Checkmarx summary
+          if echo "$COMMENT" | grep -q -E 'Checkmarx One[[:space:]]*-[[:space:]]*Scan Summary'; then
             echo "match=true" >> "$GITHUB_OUTPUT"
           else
-            echo "⛔ Not a valid Checkmarx comment. Skipping."
             echo "match=false" >> "$GITHUB_OUTPUT"
           fi
         shell: bash
 
-      - name: Stop if comment is not a valid Checkmarx comment
+      - name: Stop if comment is not Checkmarx
         if: steps.check-comment.outputs.match != 'true'
         run: |
-          echo "Comment did not meet Checkmarx requirements. Exiting."
+          echo "This comment is not a Checkmarx scan summary. Skipping remediation trigger."
           exit 0
 
       - name: Call external API with remediation data
