@@ -13,30 +13,34 @@ jobs:
   after-checkmarx:
     runs-on: ubuntu-latest
     if: github.event.issue.pull_request != null
+
     steps:
-      - name: Check if comment is a Checkmarx summary
+      - name: Check if comment is from Checkmarx and matches pattern
         id: check-comment
         run: |
-          COMMENT_BODY="${{ github.event.comment.body }}"
-          echo "Comment body: $COMMENT_BODY"
+          COMMENT="${{ github.event.comment.body }}"
+          AUTHOR="${{ github.event.comment.user.login }}"
+          echo "Triggering comment: $COMMENT"
+          echo "Author: $AUTHOR"
 
-          # Match only Checkmarx summary and skip remediation or unrelated comments
-          if echo "$COMMENT_BODY" | grep -q -E 'Checkmarx One[[:space:]]*–[[:space:]]*Scan Summary'; then
-            echo "✅ Detected Checkmarx scan summary"
-            echo "match=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "⛔ Not a Checkmarx comment. Skipping."
-            echo "match=false" >> "$GITHUB_OUTPUT"
+          IS_MATCH=false
+
+          if echo "$COMMENT" | grep -q -E 'Checkmarx One[[:space:]]*–[[:space:]]*Scan Summary'; then
+            if [ "$AUTHOR" = "riyanshguptanewscorp" ]; then
+              IS_MATCH=true
+            fi
           fi
+
+          echo "match=$IS_MATCH" >> "$GITHUB_OUTPUT"
         shell: bash
 
-      - name: Stop if comment is not a Checkmarx summary
+      - name: Skip if not Checkmarx pattern or not expected author
         if: steps.check-comment.outputs.match != 'true'
         run: |
-          echo "Comment does not match Checkmarx format. Skipping."
-          exit 0
+          echo "Comment did not match both Checkmarx pattern and author. Skipping."
 
       - name: Call external API with remediation data
+        if: steps.check-comment.outputs.match == 'true'
         env:
           GITHUB_TOKEN_SECRET: ${{ secrets.NCAI_SVRT_TOKEN }}
           API_URL: ${{ vars.NCAI_SVRT_TRIGGER_URL }}
