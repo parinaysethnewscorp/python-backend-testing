@@ -20,3 +20,8 @@ app.include_router(health_check.router, prefix="/api")
 app.include_router(general_routes.router, prefix="/api")
 app.include_router(ai_routes.router, prefix="/api")
 app.include_router(db_routes.router, prefix="/api")
+
+app.include_router(health_check.router, prefix="/api")
+app.include_router(general_routes.router, prefix="/api")
+app.include_router(ai_routes.router, prefix="/api")
+app.include_router(db_routes.router, prefix="/api")
