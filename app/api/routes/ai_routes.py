@@ -21,6 +21,8 @@ logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s -
 router = APIRouter(prefix="/ai")
 
 
+# Justing addming a comment
+
 @router.get("/route_check", response_model=dict)
 async def route_check():
     """
