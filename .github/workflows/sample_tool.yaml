@@ -3,6 +3,8 @@ name: NCAI Remediation Tool
 on:
   issue_comment:
     types: [created, edited]
+  pull_request_review_comment:
+    types: [created, edited]
 
 permissions:
   pull-requests: write
@@ -10,9 +12,9 @@ permissions:
   contents: read
 
 jobs:
-  after-checkmarx:
+  handle-issue-comment:
     runs-on: ubuntu-latest
-    if: github.event.issue.pull_request != null
+    if: github.event_name == 'issue_comment' && github.event.issue.pull_request != null
     steps:
       - name: Check if comment is from Checkmarx
         id: check-comment
@@ -22,25 +24,26 @@ jobs:
           echo "Author: $COMMENT_AUTHOR"
           
           IS_MATCH=false
-          SCOPE="feedback"
           
           if [ "$COMMENT_AUTHOR" = "gisogithubscannerdj" ]; then
             IS_MATCH=true
-            SCOPE="None"
           fi
           
           echo "match=$IS_MATCH" >> "$GITHUB_OUTPUT"
-          echo "scope=$SCOPE" >> "$GITHUB_OUTPUT"
         shell: bash
 
-      - name: Call external API with remediation data
+      - name: Skip if not expected author
+        if: steps.check-comment.outputs.match != 'true'
+        run: |
+          echo "Comment is not from expected author. Skipping."
+
+      - name: Call external API with issue comment data
+        if: steps.check-comment.outputs.match == 'true'
         env:
           GITHUB_TOKEN_SECRET: ${{ secrets.NCAI_SVRT_TOKEN }}
           API_URL: ${{ vars.NCAI_SVRT_TRIGGER_URL }}
-          SCOPE: ${{ steps.check-comment.outputs.scope }}
         run: |
-          echo "Fetching PR data from GitHub..."
-          echo "Scope: $SCOPE"
+          echo "Fetching PR data from GitHub for issue comment..."
           
           # Add error handling for curl command
           if ! PR_JSON=$(curl -s -H "Accept: application/vnd.github+json" \
@@ -83,31 +86,19 @@ jobs:
             --arg issue_number "$ISSUE_NUMBER" \
             --arg repo "$REPO_NAME" \
             --arg owner "$OWNER_NAME" \
-            --arg scope "$SCOPE" \
-            'if ($scope == "None") then
-              {
-                url: $url,
-                default_branch: $default_branch,
-                feature_branch: $feature_branch,
-                issue_number: $issue_number,
-                repo: $repo,
-                owner: $owner
-              }
-            else
-              {
-                url: $url,
-                default_branch: $default_branch,
-                feature_branch: $feature_branch,
-                issue_number: $issue_number,
-                repo: $repo,
-                owner: $owner,
-                scope: $scope
-              }
-            end')
+            --arg scope "issue_comment" \
+            '{
+              url: $url,
+              default_branch: $default_branch,
+              feature_branch: $feature_branch,
+              issue_number: $issue_number,
+              repo: $repo,
+              owner: $owner,
+              scope: $scope
+            }')
           
-          echo "=== PAYLOAD TO SEND ==="
+          echo "Payload to send (issue comment):"
           echo "$PAYLOAD" | jq .
-          echo "======================="
           echo "Sending data to $API_URL"
           
           SUCCESS=false
@@ -122,7 +113,118 @@ jobs:
             echo "HTTP Status: $response"
             
             if [ "$response" -ge 200 ] && [ "$response" -lt 300 ]; then
-              echo "✅ Successfully sent remediation start."
+              echo "✅ Successfully sent remediation start for issue comment."
+              if [ -f response.txt ]; then
+                echo "Response:"
+                cat response.txt
+              fi
+              SUCCESS=true
+              break
+            else
+              echo "❌ Attempt $i failed (status $response)"
+              if [ -f response.txt ]; then
+                echo "Error response:"
+                cat response.txt
+              fi
+              if [ $i -lt 3 ]; then
+                echo "Retrying in 5 seconds..."
+                sleep 5
+              fi
+            fi
+          done
+          
+          if [ "$SUCCESS" = false ]; then
+            echo "❌ All attempts failed"
+            exit 1
+          fi
+
+  handle-review-comment:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request_review_comment'
+    steps:
+      - name: Get PR information
+        id: pr-info
+        run: |
+          echo "PR Number: ${{ github.event.pull_request.number }}"
+          echo "Comment Author: ${{ github.event.comment.user.login }}"
+          echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Call external API with review comment data
+        env:
+          GITHUB_TOKEN_SECRET: ${{ secrets.NCAI_SVRT_TOKEN }}
+          API_URL: ${{ vars.NCAI_SVRT_TRIGGER_URL }}
+          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
+        run: |
+          echo "Fetching PR data from GitHub for review comment..."
+          
+          # Add error handling for curl command
+          if ! PR_JSON=$(curl -s -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN_SECRET" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER"); then
+            echo "❌ Failed to fetch PR data"
+            exit 1
+          fi
+          
+          # Validate JSON response
+          if ! echo "$PR_JSON" | jq empty 2>/dev/null; then
+            echo "❌ Invalid JSON response from GitHub API"
+            echo "$PR_JSON"
+            exit 1
+          fi
+          
+          GITHUB_URL=$(echo "$PR_JSON" | jq -r '.head.repo.html_url')
+          BASE_BRANCH=$(echo "$PR_JSON" | jq -r '.base.ref')
+          FEATURE_BRANCH=$(echo "$PR_JSON" | jq -r '.head.ref')
+          REPO_NAME=$(echo "$PR_JSON" | jq -r '.head.repo.name')
+          OWNER_NAME=$(echo "$PR_JSON" | jq -r '.head.repo.owner.login')
+          
+          # Validate extracted values
+          if [ "$GITHUB_URL" = "null" ] || [ "$BASE_BRANCH" = "null" ] || [ "$FEATURE_BRANCH" = "null" ]; then
+            echo "❌ Failed to extract required values from PR data"
+            echo "GitHub URL: $GITHUB_URL"
+            echo "Base Branch: $BASE_BRANCH"
+            echo "Feature Branch: $FEATURE_BRANCH"
+            exit 1
+          fi
+          
+          # Encode the token as base64(username:token)
+          ENCODED_AUTH=$(echo -n "x-access-token:$GITHUB_TOKEN_SECRET" | base64)
+          
+          PAYLOAD=$(jq -n \
+            --arg url "$GITHUB_URL" \
+            --arg default_branch "$BASE_BRANCH" \
+            --arg feature_branch "$FEATURE_BRANCH" \
+            --arg issue_number "$PR_NUMBER" \
+            --arg repo "$REPO_NAME" \
+            --arg owner "$OWNER_NAME" \
+            --arg scope "review_comment" \
+            '{
+              url: $url,
+              default_branch: $default_branch,
+              feature_branch: $feature_branch,
+              issue_number: $issue_number,
+              repo: $repo,
+              owner: $owner,
+              scope: $scope
+            }')
+          
+          echo "Payload to send (review comment):"
+          echo "$PAYLOAD" | jq .
+          echo "Sending data to $API_URL"
+          
+          SUCCESS=false
+          for i in {1..3}; do
+            echo "Attempt $i of 3..."
+            
+            response=$(curl -s -o response.txt -w "%{http_code}" -X POST "$API_URL" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $ENCODED_AUTH" \
+              -d "$PAYLOAD")
+            
+            echo "HTTP Status: $response"
+            
+            if [ "$response" -ge 200 ] && [ "$response" -lt 300 ]; then
+              echo "✅ Successfully sent remediation start for review comment."
               if [ -f response.txt ]; then
                 echo "Response:"
                 cat response.txt
