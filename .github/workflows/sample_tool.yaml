@@ -22,25 +22,26 @@ jobs:
           echo "Author: $COMMENT_AUTHOR"
           
           IS_MATCH=false
-          SCOPE="feedback"
           
           if [ "$COMMENT_AUTHOR" = "gisogithubscannerdj" ]; then
             IS_MATCH=true
-            SCOPE="None"
           fi
           
           echo "match=$IS_MATCH" >> "$GITHUB_OUTPUT"
-          echo "scope=$SCOPE" >> "$GITHUB_OUTPUT"
         shell: bash
 
+      - name: Skip if not expected author
+        if: steps.check-comment.outputs.match != 'true'
+        run: |
+          echo "Comment is not from expected author. Skipping."
+
       - name: Call external API with remediation data
+        if: steps.check-comment.outputs.match == 'true'
         env:
           GITHUB_TOKEN_SECRET: ${{ secrets.NCAI_SVRT_TOKEN }}
           API_URL: ${{ vars.NCAI_SVRT_TRIGGER_URL }}
-          SCOPE: ${{ steps.check-comment.outputs.scope }}
         run: |
           echo "Fetching PR data from GitHub..."
-          echo "Scope: $SCOPE"
           
           # Add error handling for curl command
           if ! PR_JSON=$(curl -s -H "Accept: application/vnd.github+json" \
@@ -83,31 +84,17 @@ jobs:
             --arg issue_number "$ISSUE_NUMBER" \
             --arg repo "$REPO_NAME" \
             --arg owner "$OWNER_NAME" \
-            --arg scope "$SCOPE" \
-            'if ($scope == "None") then
-              {
-                url: $url,
-                default_branch: $default_branch,
-                feature_branch: $feature_branch,
-                issue_number: $issue_number,
-                repo: $repo,
-                owner: $owner
-              }
-            else
-              {
-                url: $url,
-                default_branch: $default_branch,
-                feature_branch: $feature_branch,
-                issue_number: $issue_number,
-                repo: $repo,
-                owner: $owner,
-                scope: $scope
-              }
-            end')
+            '{
+              url: $url,
+              default_branch: $default_branch,
+              feature_branch: $feature_branch,
+              issue_number: $issue_number,
+              repo: $repo,
+              owner: $owner
+            }')
           
-          echo "=== PAYLOAD TO SEND ==="
+          echo "Payload to send:"
           echo "$PAYLOAD" | jq .
-          echo "======================="
           echo "Sending data to $API_URL"
           
           SUCCESS=false
