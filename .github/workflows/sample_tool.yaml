@@ -22,11 +22,11 @@ jobs:
           echo "Author: $COMMENT_AUTHOR"
           
           IS_MATCH=false
-          SCOPE="others"
+          SCOPE="feedback"
           
           if [ "$COMMENT_AUTHOR" = "gisogithubscannerdj" ]; then
             IS_MATCH=true
-            SCOPE="checkmarx"
+            SCOPE="None"
           fi
           
           echo "match=$IS_MATCH" >> "$GITHUB_OUTPUT"
@@ -84,15 +84,26 @@ jobs:
             --arg repo "$REPO_NAME" \
             --arg owner "$OWNER_NAME" \
             --arg scope "$SCOPE" \
-            '{
-              url: $url,
-              default_branch: $default_branch,
-              feature_branch: $feature_branch,
-              issue_number: $issue_number,
-              repo: $repo,
-              owner: $owner,
-              scope: $scope
-            }')
+            'if ($scope == "None") then
+              {
+                url: $url,
+                default_branch: $default_branch,
+                feature_branch: $feature_branch,
+                issue_number: $issue_number,
+                repo: $repo,
+                owner: $owner
+              }
+            else
+              {
+                url: $url,
+                default_branch: $default_branch,
+                feature_branch: $feature_branch,
+                issue_number: $issue_number,
+                repo: $repo,
+                owner: $owner,
+                scope: $scope
+              }
+            end')
           
           echo "=== PAYLOAD TO SEND ==="
           echo "$PAYLOAD" | jq .
