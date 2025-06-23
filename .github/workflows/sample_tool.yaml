@@ -1,4 +1,4 @@
-name: NCAI Remediation Tool
+name: NCAI Remediation Tool Trigger
 
 on:
   issue_comment:
@@ -16,84 +16,20 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'issue_comment' && github.event.issue.pull_request != null
     steps:
-      - name: Check if comment is from Checkmarx
-        id: check-comment
-        env:
-          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
-        run: |
-          echo "Author: $COMMENT_AUTHOR"
-          
-          IS_MATCH=false
-          
-          if [ "$COMMENT_AUTHOR" = "gisogithubscannerdj" ]; then
-            IS_MATCH=true
-          fi
-          
-          echo "match=$IS_MATCH" >> "$GITHUB_OUTPUT"
-        shell: bash
-
-      - name: Skip if not expected author
-        if: steps.check-comment.outputs.match != 'true'
-        run: |
-          echo "Comment is not from expected author. Skipping."
-
       - name: Call external API with issue comment data
-        if: steps.check-comment.outputs.match == 'true'
         env:
-          GITHUB_TOKEN_SECRET: ${{ secrets.NCAI_SVRT_TOKEN }}
           API_URL: ${{ vars.NCAI_SVRT_TRIGGER_URL }}
         run: |
-          echo "Fetching PR data from GitHub for issue comment..."
+          echo "Sending PR URL to external API for issue comment..."
           
-          # Add error handling for curl command
-          if ! PR_JSON=$(curl -s -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GITHUB_TOKEN_SECRET" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}"); then
-            echo "❌ Failed to fetch PR data"
-            exit 1
-          fi
-          
-          # Validate JSON response
-          if ! echo "$PR_JSON" | jq empty 2>/dev/null; then
-            echo "❌ Invalid JSON response from GitHub API"
-            echo "$PR_JSON"
-            exit 1
-          fi
-          
-          GITHUB_URL=$(echo "$PR_JSON" | jq -r '.head.repo.html_url')
-          BASE_BRANCH=$(echo "$PR_JSON" | jq -r '.base.ref')
-          FEATURE_BRANCH=$(echo "$PR_JSON" | jq -r '.head.ref')
-          REPO_NAME=$(echo "$PR_JSON" | jq -r '.head.repo.name')
-          OWNER_NAME=$(echo "$PR_JSON" | jq -r '.head.repo.owner.login')
-          ISSUE_NUMBER="${{ github.event.issue.number }}"
-          
-          # Validate extracted values
-          if [ "$GITHUB_URL" = "null" ] || [ "$BASE_BRANCH" = "null" ] || [ "$FEATURE_BRANCH" = "null" ]; then
-            echo "❌ Failed to extract required values from PR data"
-            echo "GitHub URL: $GITHUB_URL"
-            echo "Base Branch: $BASE_BRANCH"
-            echo "Feature Branch: $FEATURE_BRANCH"
-            exit 1
-          fi
-          
-          # Encode the token as base64(username:token)
-          ENCODED_AUTH=$(echo -n "x-access-token:$GITHUB_TOKEN_SECRET" | base64)
+          # Construct PR URL from context
+          PR_URL="https://github.com/${{ github.repository }}/pull/${{ github.event.issue.number }}"
           
           PAYLOAD=$(jq -n \
-            --arg url "$GITHUB_URL" \
-            --arg default_branch "$BASE_BRANCH" \
-            --arg feature_branch "$FEATURE_BRANCH" \
-            --arg issue_number "$ISSUE_NUMBER" \
-            --arg repo "$REPO_NAME" \
-            --arg owner "$OWNER_NAME" \
+            --arg pr_url "$PR_URL" \
             --arg scope "issue_comment" \
             '{
-              url: $url,
-              default_branch: $default_branch,
-              feature_branch: $feature_branch,
-              issue_number: $issue_number,
-              repo: $repo,
-              owner: $owner,
+              pr_url: $pr_url,
               scope: $scope
             }')
           
@@ -107,7 +43,6 @@ jobs:
             
             response=$(curl -s -o response.txt -w "%{http_code}" -X POST "$API_URL" \
               -H "Content-Type: application/json" \
-              -H "Authorization: Bearer $ENCODED_AUTH" \
               -d "$PAYLOAD")
             
             echo "HTTP Status: $response"
@@ -142,69 +77,20 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request_review_comment'
     steps:
-      - name: Get PR information
-        id: pr-info
-        run: |
-          echo "PR Number: ${{ github.event.pull_request.number }}"
-          echo "Comment Author: ${{ github.event.comment.user.login }}"
-          echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
-
       - name: Call external API with review comment data
         env:
-          GITHUB_TOKEN_SECRET: ${{ secrets.NCAI_SVRT_TOKEN }}
           API_URL: ${{ vars.NCAI_SVRT_TRIGGER_URL }}
-          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
         run: |
-          echo "Fetching PR data from GitHub for review comment..."
+          echo "Sending PR URL to external API for review comment..."
           
-          # Add error handling for curl command
-          if ! PR_JSON=$(curl -s -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GITHUB_TOKEN_SECRET" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER"); then
-            echo "❌ Failed to fetch PR data"
-            exit 1
-          fi
-          
-          # Validate JSON response
-          if ! echo "$PR_JSON" | jq empty 2>/dev/null; then
-            echo "❌ Invalid JSON response from GitHub API"
-            echo "$PR_JSON"
-            exit 1
-          fi
-          
-          GITHUB_URL=$(echo "$PR_JSON" | jq -r '.head.repo.html_url')
-          BASE_BRANCH=$(echo "$PR_JSON" | jq -r '.base.ref')
-          FEATURE_BRANCH=$(echo "$PR_JSON" | jq -r '.head.ref')
-          REPO_NAME=$(echo "$PR_JSON" | jq -r '.head.repo.name')
-          OWNER_NAME=$(echo "$PR_JSON" | jq -r '.head.repo.owner.login')
-          
-          # Validate extracted values
-          if [ "$GITHUB_URL" = "null" ] || [ "$BASE_BRANCH" = "null" ] || [ "$FEATURE_BRANCH" = "null" ]; then
-            echo "❌ Failed to extract required values from PR data"
-            echo "GitHub URL: $GITHUB_URL"
-            echo "Base Branch: $BASE_BRANCH"
-            echo "Feature Branch: $FEATURE_BRANCH"
-            exit 1
-          fi
-          
-          # Encode the token as base64(username:token)
-          ENCODED_AUTH=$(echo -n "x-access-token:$GITHUB_TOKEN_SECRET" | base64)
+          # Construct PR URL from context
+          PR_URL="https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
           
           PAYLOAD=$(jq -n \
-            --arg url "$GITHUB_URL" \
-            --arg default_branch "$BASE_BRANCH" \
-            --arg feature_branch "$FEATURE_BRANCH" \
-            --arg issue_number "$PR_NUMBER" \
-            --arg repo "$REPO_NAME" \
-            --arg owner "$OWNER_NAME" \
+            --arg pr_url "$PR_URL" \
             --arg scope "review_comment" \
             '{
-              url: $url,
-              default_branch: $default_branch,
-              feature_branch: $feature_branch,
-              issue_number: $issue_number,
-              repo: $repo,
-              owner: $owner,
+              pr_url: $pr_url,
               scope: $scope
             }')
           
@@ -218,7 +104,6 @@ jobs:
             
             response=$(curl -s -o response.txt -w "%{http_code}" -X POST "$API_URL" \
               -H "Content-Type: application/json" \
-              -H "Authorization: Bearer $ENCODED_AUTH" \
               -d "$PAYLOAD")
             
             echo "HTTP Status: $response"
